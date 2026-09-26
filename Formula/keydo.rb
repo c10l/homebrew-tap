@@ -28,9 +28,9 @@ class Keydo < Formula
   end
 
   test do
-    assert_match version.to_s, shell_output("#{bin}/keydo --version")
+    assert_match "Usage: keydo", shell_output("#{bin}/keydo --help")
 
-    (testpath/"test.conf").write <<~CONF
+    (testpath/"default.conf").write <<~CONF
       [ids]
       *
 
@@ -40,7 +40,9 @@ class Keydo < Formula
       [nav]
       h = left
     CONF
+    system bin/"keydo", "check", testpath/"default.conf"
 
-    system bin/"keydo", "check", testpath/"test.conf"
+    (testpath/"invalid.conf").write "this is not a valid config\n"
+    shell_output("#{bin}/keydo check #{testpath}/invalid.conf", 1)
   end
 end
