@@ -15,6 +15,10 @@ tap "c10l/tap"
 brew "<formula>"
 ```
 
+> [!NOTE]
+> These formulae have no bottles yet, so Homebrew builds them from source and
+> installs any required toolchain (e.g. `rust` for `keydo`) as a build dependency.
+
 ## Available formulae
 
 | Formula | Description |
