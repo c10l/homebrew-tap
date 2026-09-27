@@ -17,14 +17,52 @@ class Keydo < Formula
     system "cargo", "install", *std_cargo_args
   end
 
-  def caveats
-    <<~EOS
-      keydo captures and injects keyboard input at a low level, so it needs
-      elevated privileges: root on Linux, or Accessibility permission on macOS.
+  service do
+    if OS.linux?
+      # keydo refuses to start unless /run/keydo exists, and upstream's own
+      # systemd unit provides it via `RuntimeDirectory=keydo` and `Group=keydo`.
+      # Homebrew's service DSL can express neither, so create the directory
+      # ourselves (setgid, so the socket inside inherits the keydo group) before
+      # exec'ing the daemon.
+      setup = [
+        "groupadd -f keydo",
+        "mkdir -p /run/keydo",
+        "chown root:keydo /run/keydo",
+        "chmod 2750 /run/keydo",
+        "exec #{opt_bin}/keydo daemon",
+      ].join(" && ")
+      run ["/bin/sh", "-c", setup]
+      require_root true
+    else
+      run [opt_bin/"keydo", "daemon"]
+    end
 
-      Register and start the daemon with:
-        keydo install
-    EOS
+    keep_alive true
+    restart_delay 5
+  end
+
+  def caveats
+    if OS.mac?
+      <<~EOS
+        keydo needs Accessibility permission to capture and inject key events.
+        Grant it under System Settings -> Privacy & Security -> Accessibility.
+
+        Start the daemon with:
+          brew services start keydo
+      EOS
+    else
+      <<~EOS
+        keydo needs root to read input devices and inject events, so start it with:
+          sudo brew services start keydo
+
+        To use the CLI without root, add yourself to the keydo group and log back
+        in for it to take effect:
+          sudo usermod -aG keydo $USER
+
+        If you previously ran `sudo keydo install`, remove that service first with
+        `sudo keydo uninstall` so two daemons do not fight over the keyboard.
+      EOS
+    end
   end
 
   test do
